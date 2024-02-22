@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<configuration>
+
+    <!-- Уровень логирования -->
+    <root level="INFO">
+        <appender-ref ref="FILE" />
+    </root>
+
+    <!-- Настройки для логирования в файл -->
+    <appender name="FILE" class="ch.qos.logback.core.rolling.RollingFileAppender">
+        <file>logs/currency-service.log</file> <!-- Путь к файлу логов -->
+        <rollingPolicy class="ch.qos.logback.core.rolling.SizeAndTimeBasedRollingPolicy">
+            <fileNamePattern>logs/currency-service-%d{yyyy-MM-dd}.%i.log.zip</fileNamePattern>
+            <maxFileSize>10MB</maxFileSize> <!-- Максимальный размер одного файла (10 мегабайт) -->
+            <maxHistory>30</maxHistory> <!-- Количество архивированных файлов -->
+            <totalSizeCap>1GB</totalSizeCap> <!-- Максимальный общий размер всех файлов (1 гигабайт) -->
+        </rollingPolicy>
+        <encoder>
+            <pattern>%date %-5level [%thread] %logger{35} - %msg%n</pattern>
+        </encoder>
+    </appender>
+
+</configuration>
