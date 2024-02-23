@@ -24,11 +24,16 @@ public class CurrencyService {
     private static final String URL_RUS = "https://www.cbr.ru/scripts/XML_daily.asp";
     private static final String URL_KZ = "https://nationalbank.kz/rss/rates_all.xml";
 
-    public static Map<String, CurrencyRateRus> getCurrencyRatesRus() {
+    private final RestTemplate restTemplate;
+
+    public CurrencyService(RestTemplate restTemplate) {
+        this.restTemplate = restTemplate;
+    }
+
+    public  Map<String, CurrencyRateRus> getCurrencyRatesRus() {
         Map<String, CurrencyRateRus> currencyRateMap = new HashMap<>();
 
         try {
-            RestTemplate restTemplate = new RestTemplate();
             String xmlData = restTemplate.getForObject(URL_RUS, String.class);
 
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();
@@ -57,11 +62,10 @@ public class CurrencyService {
         return currencyRateMap;
     }
 
-    public static Map<String, CurrencyRateKz> getCurrencyRatesKz() {
+    public  Map<String, CurrencyRateKz> getCurrencyRatesKz() {
         Map<String, CurrencyRateKz> currencyRateMap = new HashMap<>();
 
         try {
-            RestTemplate restTemplate = new RestTemplate();
             String xmlData = restTemplate.getForObject(URL_KZ, String.class);
 
             DocumentBuilderFactory factory = DocumentBuilderFactory.newInstance();

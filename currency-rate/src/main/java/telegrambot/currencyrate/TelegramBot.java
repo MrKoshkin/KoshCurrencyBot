@@ -15,6 +15,10 @@ import telegrambot.currencyrate.services.CurrencyService;
 @AllArgsConstructor
 public class TelegramBot extends TelegramLongPollingBot {
     private final BotConfig botConfig;
+    private final CurrencyService currencyService;
+
+    private static final String VALID_CURRENCY_PAIR_FORMAT = "^[A-Z]{6}$";
+
 
     @Override
     public String getBotUsername() {
@@ -29,68 +33,78 @@ public class TelegramBot extends TelegramLongPollingBot {
     @Override
     public void onUpdateReceived(Update update) {
 
-
-        if(update.hasMessage() && update.getMessage().hasText()) {
-            String messageText = update.getMessage().getText();
+        if (update.hasMessage() && update.getMessage().hasText()) {
+            String messageText = update.getMessage().getText().replaceAll("[^a-zA-Z]", "").toUpperCase();
             long chatId = update.getMessage().getChatId();
 
-            switch (messageText) {
-                case "/start":
-                    startCommandReceived(chatId, update.getMessage().getChat().getFirstName());
-                    break;
-                default:
-                    currencyCodeReceived(chatId, messageText);
+            try {
+                if (messageText.equals("/start")) {
+                    handleStartCommand(chatId, update.getMessage().getChat().getFirstName());
+                } else if (isCurrencyPairFormatValid(messageText)) {
+                    handleCurrencyPair(chatId, messageText);
+                } else {
+                    handleInvalidCommand(chatId);
+                }
+            } catch (Exception e) {
+                handleError(chatId, e);
             }
 
         }
 
     }
 
-    private void startCommandReceived(Long chatId, String name) {
+    private void handleStartCommand(Long chatId, String name) {
         String answer = "Привет, " + name + "!" + "\n" +
-                "Введи валютную пару, курс который ты хочешь узнать" + "\n" +
+                "Введите валютную пару, курс который вы хотите узнать" + "\n" +
                 "К примеру: \"USDRUB\"";
         sendMessage(chatId, answer);
     }
 
-    private void currencyCodeReceived(Long chatId, String messageText) {
-
-        messageText = messageText.replaceAll("[^a-zA-Z]", "").toUpperCase(); // Убираем лишние символы и приводим к верхнему регистру
-        if (messageText.length()!=6) {
-            String answer = "Невалидная валютная пара!" + "\n" +
-                    "Введи валютную пару в формате \"USDRUB\"";;
-            sendMessage(chatId, answer);
-            return;
-        }
-
+    private void handleCurrencyPair(Long chatId, String messageText) {
         String baseCurrency = messageText.substring(3);
-        String requiredCurrency = messageText.substring(0,3);
+        String requiredCurrency = messageText.substring(0, 3);
 
         try {
+            String answer;
             if (baseCurrency.equals("RUB")) {
-                String answer = CurrencyService.getCurrencyRatesRus().get(requiredCurrency).toString();
-                sendMessage(chatId, answer);
+                answer = currencyService.getCurrencyRatesRus().get(requiredCurrency).toString();
             } else if (baseCurrency.equals("KZT")) {
-                String answer = CurrencyService.getCurrencyRatesKz().get(requiredCurrency).toString();
-                sendMessage(chatId, answer);
+                answer = currencyService.getCurrencyRatesKz().get(requiredCurrency).toString();
             } else {
-                String answer = "Указанная валюта не поддерживается." + "\n" +
-                        "Доступны валютные пары с рублями и тенге";
-                sendMessage(chatId, answer);
+                answer = "Невалидная валютная пара!" + "\n" +
+                        "Введи валютную пару в формате \"USDRUB\"";
             }
+            sendMessage(chatId, answer);
         } catch (Exception e) {
-            //TODO
+            handleError(chatId, e);
         }
     }
 
-    private void sendMessage(Long chatId, String textToSend){
+    private void handleInvalidCommand(Long chatId) {
+        String answer = "Невалидная валютная пара!" + "\n" +
+                "Введи валютную пару в формате \"USDRUB\"";
+        sendMessage(chatId, answer);
+    }
+
+    private void handleError(Long chatId, Exception e) {
+        String errorMessage = "Произошла ошибка при обработке запроса";
+        log.error("Error: {}", e.getMessage());
+
+        sendMessage(chatId, errorMessage);
+    }
+
+    private boolean isCurrencyPairFormatValid(String messageText) {
+        return messageText.matches(VALID_CURRENCY_PAIR_FORMAT);
+    }
+
+    private void sendMessage(Long chatId, String textToSend) {
         SendMessage sendMessage = new SendMessage();
         sendMessage.setChatId(String.valueOf(chatId));
         sendMessage.setText(textToSend);
         try {
             execute(sendMessage);
         } catch (TelegramApiException e) {
-            //TODO
+            handleError(chatId, e);
         }
     }
 }
