@@ -17,7 +17,7 @@ public class TelegramBot extends TelegramLongPollingBot {
     private final BotConfig botConfig;
     private final CurrencyService currencyService;
 
-    private static final String VALID_CURRENCY_PAIR_FORMAT = "^[A-Z]{6}$";
+    private static final String VALID_CURRENCY_PAIR_FORMAT = "^[A-Z]{3}(KZT|RUB)$";
 
 
     @Override
@@ -38,11 +38,14 @@ public class TelegramBot extends TelegramLongPollingBot {
             long chatId = update.getMessage().getChatId();
 
             try {
-                if (messageText.equals("/start")) {
+                if (update.getMessage().getText().equals("/start")) {
+                    log.info("[chatId: " + chatId + "] " + "Bot started for user: " + update.getMessage().getChat().getUserName());
                     handleStartCommand(chatId, update.getMessage().getChat().getFirstName());
                 } else if (isCurrencyPairFormatValid(messageText)) {
+                    log.info("[chatId: " + chatId + "] " + "Rate request: " + messageText);
                     handleCurrencyPair(chatId, messageText);
                 } else {
+                    log.info("[chatId: " + chatId + "] " + "Invalid request: " + messageText );
                     handleInvalidCommand(chatId);
                 }
             } catch (Exception e) {
@@ -67,16 +70,14 @@ public class TelegramBot extends TelegramLongPollingBot {
         try {
             String answer;
             if (baseCurrency.equals("RUB")) {
-                answer = currencyService.getCurrencyRatesRus().get(requiredCurrency).toString();
-            } else if (baseCurrency.equals("KZT")) {
-                answer = currencyService.getCurrencyRatesKz().get(requiredCurrency).toString();
+                answer = currencyService.getCurrencyRatesRus().get(requiredCurrency).toString();    // Получение курса с сайта ЦБ РФ
             } else {
-                answer = "Невалидная валютная пара!" + "\n" +
-                        "Введи валютную пару в формате \"USDRUB\"";
+                answer = currencyService.getCurrencyRatesKz().get(requiredCurrency).toString();     // Получение курса с сайта нац банка РК
             }
             sendMessage(chatId, answer);
         } catch (Exception e) {
-            handleError(chatId, e);
+            log.info("[chatId: " + chatId + "] " + "Invalid request: " + messageText );
+            handleInvalidCommand(chatId);
         }
     }
 
